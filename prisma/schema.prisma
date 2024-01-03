@@ -1,20 +1,311 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-generator client {
-    provider = "prisma-client-js"
-}
-
 datasource db {
-    provider = "sqlite"
-    url      = env("DATABASE_URL")
+  provider      = "mysql"
+  url           = env("DATABASE_URL")
+  relationMode  = "prisma"
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@index([name])
+generator client {
+  provider = "prisma-client-js"
 }
+
+
+//   ______   _   _   _    _   __  __    _____ 
+//  |  ____| | \ | | | |  | | |  \/  |  / ____|
+//  | |__    |  \| | | |  | | | \  / | | (___  
+//  |  __|   | . ` | | |  | | | |\/| |  \___ \ 
+//  | |____  | |\  | | |__| | | |  | |  ____) |
+//  |______| |_| \_|  \____/  |_|  |_| |_____/ 
+
+enum Status {
+  Active
+  Inactive
+}
+
+//              _    _   _______   _    _ 
+//      /\     | |  | | |__   __| | |  | |
+//     /  \    | |  | |    | |    | |__| |
+//    / /\ \   | |  | |    | |    |  __  |
+//   / ____ \  | |__| |    | |    | |  | |
+//  /_/    \_\  \____/     |_|    |_|  |_|
+
+model Account {
+    id                       String  @id @default(cuid())
+    userId                   String
+    type                     String
+    provider                 String
+    providerAccountId        String
+    refresh_token            String? @db.Text
+    refresh_token_expires_in Int?
+    access_token             String? @db.Text
+    expires_at               Int?
+    token_type               String?
+    scope                    String?
+    id_token                 String? @db.Text
+    session_state            String?
+    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+}
+
+model Session {
+    id           String   @id @default(cuid())
+    sessionToken String   @unique
+    userId       String
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+    id            String    @id @default(cuid())
+    name          String?
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+    accounts      Account[]
+    sessions      Session[]
+}
+
+model VerificationToken {
+    identifier String
+    token      String       @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
+
+model IntUser {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String    @unique
+  status            Status    @default(Active)
+  
+  createdJobs       Job[]
+  knownProgrammers  KnownProgrammer[]
+  knownKeys         KnownKey[]
+  cars              Car[]
+  vehicles          Vehicle[]
+  models            Model[]
+  tasks            Task[]
+  makes             Make[]
+  keys              Key[]
+  programmers       Programmer[]
+}
+
+//   ____                _____   ______      ____    ____         _   ______    _____   _______    _____ 
+//  |  _ \      /\      / ____| |  ____|    / __ \  |  _ \       | | |  ____|  / ____| |__   __|  / ____|
+//  | |_) |    /  \    | (___   | |__      | |  | | | |_) |      | | | |__    | |         | |    | (___  
+//  |  _ <    / /\ \    \___ \  |  __|     | |  | | |  _ <   _   | | |  __|   | |         | |     \___ \ 
+//  | |_) |  / ____ \   ____) | | |____    | |__| | | |_) | | |__| | | |____  | |____     | |     ____) |
+//  |____/  /_/    \_\ |_____/  |______|    \____/  |____/   \____/  |______|  \_____|    |_|    |_____/ 
+
+model Vehicle {
+  id              String    @id @default(cuid())
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // unique properties
+  year                Int
+
+  // parent models
+  model               Model     @relation(fields: [modelId], references: [id])
+  modelId             String
+
+  // child models
+  knownProgrammers    KnownProgrammer[]
+  knownKeys           KnownKey[]
+  cars                Car[]
+  @@index([modelId])
+
+  // model constraints
+  @@unique([year, modelId])
+}
+
+model Car {
+  id              String    @id @default(cuid())
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // unique properties
+  vin             String
+
+  // parent models
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  vehicleId       String
+  @@index([vehicleId])
+}
+
+
+
+model KnownKey {
+  id              String    @id @default(cuid())
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // unique properties
+  success         Int
+
+  // parent models
+  key             Key       @relation(fields: [keyId], references: [id])
+  keyId           String
+  @@index([keyId])
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  vehicleId       String
+  @@index([vehicleId])
+}
+
+model KnownProgrammer {
+  id              String    @id @default(cuid())
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // unique properties
+  success         Int
+
+  // parent models
+  programmer      Programmer    @relation(fields: [programmerId], references: [id])
+  programmerId    String
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  vehicleId       String
+  task            Task          @relation(fields: [taskId], references: [id])
+  taskId          String
+  @@index([programmerId])
+  @@index([vehicleId])
+  @@index([taskId])
+}
+
+
+//   ____    _    _    _____   _____   _   _   ______    _____    _____        ____    ____         _   ______    _____   _______    _____ 
+//  |  _ \  | |  | |  / ____| |_   _| | \ | | |  ____|  / ____|  / ____|      / __ \  |  _ \       | | |  ____|  / ____| |__   __|  / ____|
+//  | |_) | | |  | | | (___     | |   |  \| | | |__    | (___   | (___       | |  | | | |_) |      | | | |__    | |         | |    | (___  
+//  |  _ <  | |  | |  \___ \    | |   | . ` | |  __|    \___ \   \___ \      | |  | | |  _ <   _   | | |  __|   | |         | |     \___ \ 
+//  | |_) | | |__| |  ____) |  _| |_  | |\  | | |____   ____) |  ____) |     | |__| | | |_) | | |__| | | |____  | |____     | |     ____) |
+//  |____/   \____/  |_____/  |_____| |_| \_| |______| |_____/  |_____/       \____/  |____/   \____/  |______|  \_____|    |_|    |_____/ 
+
+model Key {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // child models
+  knownKeys       KnownKey[]
+}
+
+model Programmer {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // child models
+  knownProgrammers  KnownProgrammer[]
+}
+
+model Task {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // child models
+  knownProgrammers  KnownProgrammer[]
+}
+
+model Make {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // child models
+  models          Model[]
+}
+
+model Model {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime  @default(now())
+  status          Status    @default(Active)
+  @@index([enteredById])
+
+  // parent models
+  make            Make      @relation(fields: [makeId], references: [id])
+  makeId          String
+  @@index([makeId])
+
+  // child models
+  vehicles        Vehicle[]
+}
+
+
+//   _____   _   _           _____    _____     ____     _____   _____    ______    _____    _____ 
+//  |_   _| | \ | |         |  __ \  |  __ \   / __ \   / ____| |  __ \  |  ____|  / ____|  / ____|
+//    | |   |  \| |         | |__) | | |__) | | |  | | | |  __  | |__) | | |__    | (___   | (___  
+//    | |   | . ` |         |  ___/  |  _  /  | |  | | | | |_ | |  _  /  |  __|    \___ \   \___ \ 
+//   _| |_  | |\  |         | |      | | \ \  | |__| | | |__| | | | \ \  | |____   ____) |  ____) |
+//  |_____| |_| \_|         |_|      |_|  \_\  \____/   \_____| |_|  \_\ |______| |_____/  |_____/ 
+
+model Job {
+  id              String    @id @default(cuid())
+  startDate       DateTime
+  endDate         DateTime
+  location        String
+
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  customerId      String
+
+  enteredBy       IntUser   @relation(fields: [enteredById], references: [id])
+  enteredById     String
+  enteredDate     DateTime
+  status          Int
+
+  @@index([customerId])
+  @@index([enteredById])
+}
+
+model Customer {
+  id              String    @id @default(cuid())
+  name            String
+  jobs            Job[]
+}
+
+// model Generation {
+//   id              String    @id @default(cuid())
+//   name            String    @unique
+//   model           Model     @relation(fields: [modelId], references: [id])
+//   modelId         String
+// }
+
+// model Business {
+//   id              String    @id @default(cuid())
+//   name            String
+// }
